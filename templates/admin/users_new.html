@@ -1,0 +1,10 @@
+{{define "content"}}
+<h1>Create New User</h1>
+<form action="/admin/users/create" method="post">
+    <label for="login">Login:</label>
+    <input type="text" id="login" name="login" required value="{{.user.Login}}"><br>
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required value="{{.user.Password}}"><br>
+    <button type="submit">Create</button>
+</form>
+{{end}}
