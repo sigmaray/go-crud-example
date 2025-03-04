@@ -1,0 +1,5 @@
+*.log
+main
+go-crud-example
+venv
+__pycache__

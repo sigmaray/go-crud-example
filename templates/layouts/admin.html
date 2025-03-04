@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Management</title>
+    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.css">
+</head>
+<body>
+    {{ if .currentUser }}
+    <header>
+        <p>Logged in as: {{.currentUser.Login}}</p>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/admin/users">Manage Users</a>
+            <a href="/logout">Logout</a>
+        </nav>
+    </header>
+    {{end}}
+    {{range .flashes}}        
+        <p class="notice">{{.}}</p>
+    {{end}}    
+    {{ if .errors }}
+    <h3>Errors:</h3>
+    {{range .errors}}
+    <pre>{{.}}</pre>
+    {{end}}
+    {{end}}
+    {{template "content" .}}
+</body>
+</html>
