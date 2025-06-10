@@ -1,0 +1,11 @@
+{{define "content"}}
+<h1>Edit Page</h1>
+<form action="/admin/pages/{{.page.ID}}/update" method="post">
+    <label for="slug">Slug:</label>
+    <input type="text" id="slug" name="slug" required value="{{.page.Slug}}"><br>
+    <label for="content">Content:</label>
+    <textarea type="content" id="content" name="content" required>{{.page.Content}}</textarea><br>
+
+    <button type="submit">Update</button>
+</form>
+{{end}}

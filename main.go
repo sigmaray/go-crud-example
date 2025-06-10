@@ -1,6 +1,7 @@
 package main
 
 import (
+	"html/template"
 	"log"
 	"os"
 	"path/filepath"
@@ -10,8 +11,9 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var db *gorm.DB
@@ -46,13 +48,19 @@ func initDB() {
 		pg_host = "localhost"
 	}
 	dsn := "host=" + pg_host + " user=postgres dbname=appdb password=postgres sslmode=disable"
-	db, err = gorm.Open("postgres", dsn)
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
 	// Migrate the schema
-	db.AutoMigrate(&User{})
+	db.AutoMigrate(&User{}, &Page{})
 }
 
 func seed() {
@@ -71,47 +79,78 @@ func seed() {
 	}
 }
 
-func setupGin() {
-	loadTemplates := func(templatesDir string) multitemplate.Renderer {
-		r := multitemplate.NewRenderer()
+func isTest() bool {
+	return (os.Getenv("TEST") == "1" || os.Getenv("TEST") == "true" || os.Getenv("TEST") == "yes" || os.Getenv("TEST") == "on" || os.Getenv("TEST") == "t")
+}
 
-		publicLayouts, err := filepath.Glob(templatesDir + "/layouts/public.html")
-		if err != nil {
-			panic(err.Error())
-		}
+func loadTemplates(templatesDir string) multitemplate.Renderer {
+	r := multitemplate.NewRenderer()
 
-		publicTemplates, err := filepath.Glob(templatesDir + "/*.html")
-		if err != nil {
-			panic(err.Error())
-		}
-
-		for _, publicTemplate := range publicTemplates {
-			layoutCopy := make([]string, len(publicLayouts))
-			copy(layoutCopy, publicLayouts)
-			files := append(layoutCopy, publicTemplate)
-			r.AddFromFiles(filepath.Base(publicTemplate), files...)
-		}
-
-		adminLayouts, err := filepath.Glob(templatesDir + "/layouts/admin.html")
-		if err != nil {
-			panic(err.Error())
-		}
-
-		admins, err := filepath.Glob(templatesDir + "/admin/*.html")
-		if err != nil {
-			panic(err.Error())
-		}
-
-		for _, adminTemplate := range admins {
-			layoutCopy := make([]string, len(adminLayouts))
-			copy(layoutCopy, adminLayouts)
-			files := append(layoutCopy, adminTemplate)
-			r.AddFromFiles(filepath.Base(adminTemplate), files...)
-		}
-		return r
+	// your custom funcs
+	fm := template.FuncMap{
+		"isTest": isTest,
 	}
 
-	// Create a new Gin router
+	// find your layouts
+	publicLayouts, err := filepath.Glob(filepath.Join(templatesDir, "layouts", "public.html"))
+	if err != nil {
+		panic(err)
+	}
+	adminLayouts, err := filepath.Glob(filepath.Join(templatesDir, "layouts", "admin.html"))
+	if err != nil {
+		panic(err)
+	}
+
+	// walk every file under templatesDir
+	err = filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		// skip your layout files themselves
+		relToLayouts := filepath.Join("layouts")
+		if strings.HasPrefix(path, filepath.Join(templatesDir, relToLayouts)) {
+			return nil
+		}
+
+		// only handle html files
+		if !strings.HasSuffix(path, ".html") {
+			return nil
+		}
+
+		// compute the name you want to render by stripping the base dir
+		relPath, err := filepath.Rel(templatesDir, path)
+		if err != nil {
+			return err
+		}
+		// turn Windows \ into forward slash
+		name := filepath.ToSlash(relPath)
+
+		// pick which layout slice applies
+		var layoutSlice []string
+		if strings.HasPrefix(relPath, "admin/") {
+			layoutSlice = adminLayouts
+		} else if strings.HasPrefix(relPath, "public/") {
+			layoutSlice = publicLayouts
+		}
+
+		// finally register it
+		files := append(layoutSlice, path)
+		r.AddFromFilesFuncs(name, fm, files...)
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	return r
+}
+
+func setupGin() {
+    // Create a new Gin router
 	router := gin.Default()
 
 	store := cookie.NewStore([]byte("secret"))
@@ -119,20 +158,7 @@ func setupGin() {
 
 	router.HTMLRender = loadTemplates("./templates")
 
-	router.GET("/", actionRoot)
-
-	router.GET("/login", middlewareSetUser, actionLoginForm)
-	router.POST("/login", middlewareSetUser, actionLoginSubmit)
-	router.GET("/logout", middlewareSetUser, actionLogout)
-
-	router.GET("/admin", actionAdminIndex)
-	router.GET("/admin/users/new", middlewareAuthRequired, middlewareSetUser, actionUsersNew)
-	router.POST("/admin/users/create", middlewareAuthRequired, middlewareSetUser, actionUsersCreate)
-	router.GET("/admin/users", middlewareAuthRequired, middlewareSetUser, actionUsersIndex)
-	router.GET("/admin/users/:id", middlewareAuthRequired, middlewareSetUser, actionUsersShow)
-	router.GET("/admin/users/:id/edit", middlewareAuthRequired, middlewareSetUser, actionUsersEdit)
-	router.POST("/admin/users/:id/update", middlewareAuthRequired, middlewareSetUser, actionUsersUpdate)
-	router.POST("/admin/users/:id/delete", middlewareAuthRequired, middlewareSetUser, actionUsersDestroy)
+	setupRoutes(router)
 
 	// Run the server
 	router.Run(":8080")

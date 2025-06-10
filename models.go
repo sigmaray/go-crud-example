@@ -13,3 +13,15 @@ type User struct {
 func (User) TableName() string {
 	return "user"
 }
+
+type Page struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Slug      string    `gorm:"unique" json:"slug"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (Page) TableName() string {
+	return "page"
+}

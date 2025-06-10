@@ -1,0 +1,13 @@
+{{define "content"}}
+<ul>    
+    <li><a href="/tools/db-clear">db clear</a></li>
+    <li><a href="/tools/seed">seed</a></li>
+</ul>
+<div>-----------</div>
+<div>Exec SQL:</div>
+<form action="/tools/sql" method="GET">
+    <textarea name="q"></textarea>
+    <input type="submit" />
+</form>
+<div>-----------</div>
+{{end}}
