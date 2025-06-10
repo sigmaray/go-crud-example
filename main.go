@@ -1,6 +1,7 @@
 package main
 
 import (
+	"html/template"
 	"log"
 	"os"
 	"path/filepath"
@@ -10,8 +11,9 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var db *gorm.DB
@@ -46,13 +48,19 @@ func initDB() {
 		pg_host = "localhost"
 	}
 	dsn := "host=" + pg_host + " user=postgres dbname=appdb password=postgres sslmode=disable"
-	db, err = gorm.Open("postgres", dsn)
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
 	// Migrate the schema
-	db.AutoMigrate(&User{})
+	db.AutoMigrate(&User{}, &Page{})
 }
 
 func seed() {
@@ -71,6 +79,10 @@ func seed() {
 	}
 }
 
+func isTest() bool {
+	return (os.Getenv("TEST") == "1" || os.Getenv("TEST") == "true" || os.Getenv("TEST") == "yes" || os.Getenv("TEST") == "on" || os.Getenv("TEST") == "t")
+}
+
 func setupGin() {
 	loadTemplates := func(templatesDir string) multitemplate.Renderer {
 		r := multitemplate.NewRenderer()
@@ -85,11 +97,17 @@ func setupGin() {
 			panic(err.Error())
 		}
 
+		fm := template.FuncMap{
+			"isTest": func() bool {
+				return isTest()
+			},
+		}
+
 		for _, publicTemplate := range publicTemplates {
 			layoutCopy := make([]string, len(publicLayouts))
 			copy(layoutCopy, publicLayouts)
 			files := append(layoutCopy, publicTemplate)
-			r.AddFromFiles(filepath.Base(publicTemplate), files...)
+			r.AddFromFilesFuncs(filepath.Base(publicTemplate), fm, files...)
 		}
 
 		adminLayouts, err := filepath.Glob(templatesDir + "/layouts/admin.html")
@@ -106,7 +124,7 @@ func setupGin() {
 			layoutCopy := make([]string, len(adminLayouts))
 			copy(layoutCopy, adminLayouts)
 			files := append(layoutCopy, adminTemplate)
-			r.AddFromFiles(filepath.Base(adminTemplate), files...)
+			r.AddFromFilesFuncs(filepath.Base(adminTemplate), fm, files...)
 		}
 		return r
 	}
@@ -121,6 +139,8 @@ func setupGin() {
 
 	router.GET("/", actionRoot)
 
+	router.GET("/pages/:slug", actionPage)
+
 	router.GET("/login", middlewareSetUser, actionLoginForm)
 	router.POST("/login", middlewareSetUser, actionLoginSubmit)
 	router.GET("/logout", middlewareSetUser, actionLogout)
@@ -133,6 +153,16 @@ func setupGin() {
 	router.GET("/admin/users/:id/edit", middlewareAuthRequired, middlewareSetUser, actionUsersEdit)
 	router.POST("/admin/users/:id/update", middlewareAuthRequired, middlewareSetUser, actionUsersUpdate)
 	router.POST("/admin/users/:id/delete", middlewareAuthRequired, middlewareSetUser, actionUsersDestroy)
+	router.GET("/admin/pages", middlewareAuthRequired, middlewareSetUser, actionPagesIndex)
+	router.GET("/admin/pages/new", middlewareAuthRequired, middlewareSetUser, actionPagesNew)
+	router.POST("/admin/pages/create", middlewareAuthRequired, middlewareSetUser, actionPagesCreate)
+	router.GET("/admin/pages/:id", middlewareAuthRequired, middlewareSetUser, actionPagesShow)
+	router.GET("/admin/pages/:id/edit", middlewareAuthRequired, middlewareSetUser, actionPagesEdit)
+	router.POST("/admin/pages/:id/update", middlewareAuthRequired, middlewareSetUser, actionPagesUpdate)
+	router.POST("/admin/pages/:id/delete", middlewareAuthRequired, middlewareSetUser, actionPagesDestroy)
+	router.GET("/tools", actionTools)
+	router.GET("/tools/db-clear", actionToolsDBClear)
+	router.GET("/tools/seed-admin", actionToolsSeedAdmin)
 
 	// Run the server
 	router.Run(":8080")

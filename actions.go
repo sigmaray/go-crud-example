@@ -11,11 +11,6 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type UserInput struct {
-	Login    string `validate:"required,min=3"`
-	Password string `validate:"required,min=3"`
-}
-
 // Convert validation errors into slice of human readable error strings
 func humanValidationErrors(err error) []string {
 	getErrorMessage := func(field, tag string) string {
@@ -52,14 +47,35 @@ func addFlashesAndUser(c *gin.Context, h *gin.H) *gin.H {
 	if user != nil {
 		(*h)["currentUser"] = user.(User)
 	} else {
-		return nil
+		(*h)["currentUser"] = nil
 	}
 
 	return h
 }
 
 func actionRoot(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.html", nil)
+	var pages []Page
+	db.Find(&pages)
+	c.HTML(http.StatusOK, "index.html", &gin.H{"pages": pages})
+}
+
+func actionPage(c *gin.Context) {
+	slug := c.Param("slug")
+
+	var page Page
+
+	if err := db.Where("slug = ?", slug).First(&page).Error; err != nil {
+		c.HTML(http.StatusNotFound, "error.html", addFlashesAndUser(c, &gin.H{"errors": []string{"Page not found"}}))
+		return
+	}
+
+	pageJSON, err := json.MarshalIndent(page, "", "  ")
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", addFlashesAndUser(c, &gin.H{"errors": []string{err.Error()}}))
+		return
+	}
+
+	c.HTML(http.StatusOK, "page.html", &gin.H{"slug": slug, "page": page, "pageJSON": string(pageJSON)})
 }
 
 func actionLoginForm(c *gin.Context) {
@@ -149,8 +165,7 @@ func actionUsersCreate(c *gin.Context) {
 	}
 
 	// Validate user input
-	var validate *validator.Validate
-	validate = validator.New(validator.WithRequiredStructEnabled())
+	validate := validator.New(validator.WithRequiredStructEnabled())
 	if err := validate.Struct(user_input); err != nil {
 		c.HTML(http.StatusBadRequest, "users_new.html", addFlashesAndUser(c, &gin.H{"errors": humanValidationErrors(err), "user": user}))
 		return
@@ -199,8 +214,7 @@ func actionUsersUpdate(c *gin.Context) {
 	}
 
 	// Validate user input
-	var validate *validator.Validate
-	validate = validator.New(validator.WithRequiredStructEnabled())
+	validate := validator.New(validator.WithRequiredStructEnabled())
 	if err := validate.Struct(user_input); err != nil {
 		c.HTML(http.StatusOK, "users_edit.html", addFlashesAndUser(c, &gin.H{"errors": humanValidationErrors(err), "user": user}))
 		return
@@ -233,4 +247,164 @@ func actionUsersDestroy(c *gin.Context) {
 	session.Save()
 
 	c.Redirect(http.StatusSeeOther, "/admin/users")
+}
+
+func actionPagesIndex(c *gin.Context) {
+	var pages []Page
+	db.Find(&pages)
+	c.HTML(http.StatusOK, "pages_index.html", addFlashesAndUser(c, &gin.H{"pages": pages}))
+}
+
+func actionPagesShow(c *gin.Context) {
+	id := c.Param("id")
+	var page Page
+
+	if err := db.First(&page, id).Error; err != nil {
+		c.HTML(http.StatusNotFound, "error.html", addFlashesAndUser(c, &gin.H{"errors": []string{"Page not found"}}))
+		return
+	}
+
+	pageJSON, err := json.MarshalIndent(page, "", "  ")
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", addFlashesAndUser(c, &gin.H{"errors": []string{err.Error()}}))
+		return
+	}
+
+	c.HTML(http.StatusOK, "pages_show.html", addFlashesAndUser(c, &gin.H{"page": page, "pageJSON": string(pageJSON)}))
+}
+
+func actionPagesNew(c *gin.Context) {
+	var page Page
+	c.HTML(http.StatusOK, "pages_new.html", addFlashesAndUser(c, &gin.H{"page": page}))
+}
+
+func actionPagesCreate(c *gin.Context) {
+	var page Page
+	page.Slug = c.PostForm("slug")
+	page.Content = c.PostForm("content")
+	page.CreatedAt = time.Now()
+	page.UpdatedAt = time.Now()
+
+	page_input := &PageInput{
+		Slug:    page.Slug,
+		Content: page.Content,
+	}
+
+	// Validate user input
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	if err := validate.Struct(page_input); err != nil {
+		c.HTML(http.StatusBadRequest, "pages_new.html", addFlashesAndUser(c, &gin.H{"errors": humanValidationErrors(err), "page": page}))
+		return
+	}
+
+	if err := db.Create(&page).Error; err != nil {
+		c.HTML(http.StatusInternalServerError, "pages_new.html", addFlashesAndUser(c, &gin.H{"errors": []string{err.Error()}, "page": page}))
+		return
+	}
+
+	session := sessions.Default(c)
+	session.AddFlash("Page was added.")
+	session.Save()
+
+	c.Redirect(http.StatusSeeOther, "/admin/pages")
+}
+
+func actionPagesEdit(c *gin.Context) {
+	id := c.Param("id")
+	var page Page
+
+	if err := db.First(&page, id).Error; err != nil {
+		c.HTML(http.StatusNotFound, "error.html", addFlashesAndUser(c, &gin.H{"errors": []string{"User not found"}}))
+		return
+	}
+
+	c.HTML(http.StatusOK, "pages_edit.html", addFlashesAndUser(c, &gin.H{"page": page}))
+}
+
+func actionPagesUpdate(c *gin.Context) {
+	id := c.Param("id")
+	var page Page
+
+	if err := db.First(&page, id).Error; err != nil {
+		c.HTML(http.StatusNotFound, "error.html", addFlashesAndUser(c, &gin.H{"errors": []string{"User not found"}}))
+		return
+	}
+
+	page.Slug = c.PostForm("slug")
+	page.Content = c.PostForm("content")
+	page.UpdatedAt = time.Now()
+
+	page_input := &PageInput{
+		Slug:    page.Slug,
+		Content: page.Content,
+	}
+
+	// Validate user input
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	if err := validate.Struct(page_input); err != nil {
+		c.HTML(http.StatusOK, "pages_edit.html", addFlashesAndUser(c, &gin.H{"errors": humanValidationErrors(err), "user": page}))
+		return
+	}
+
+	if err := db.Save(&page).Error; err != nil {
+		c.HTML(http.StatusOK, "pages_edit.html", addFlashesAndUser(c, &gin.H{"errors": []string{err.Error()}, "user": page}))
+		return
+	}
+
+	session := sessions.Default(c)
+	session.AddFlash("Page was edited.")
+	session.Save()
+
+	c.Redirect(http.StatusSeeOther, "/admin/pages")
+}
+
+func actionPagesDestroy(c *gin.Context) {
+	id := c.Param("id")
+	if err := db.Delete(&Page{}, id).Error; err != nil {
+		session := sessions.Default(c)
+		session.AddFlash(err.Error())
+		session.Save()
+		c.Redirect(http.StatusSeeOther, "/admin/pages")
+		return
+	}
+
+	session := sessions.Default(c)
+	session.AddFlash("Page was deleted.")
+	session.Save()
+
+	c.Redirect(http.StatusSeeOther, "/admin/pages")
+}
+
+func actionTools(c *gin.Context) {
+	c.HTML(http.StatusOK, "tools.html", addFlashesAndUser(c, &gin.H{}))
+}
+
+func actionToolsDBClear(c *gin.Context) {
+	session := sessions.Default(c)
+
+	// Clear all users and pages from the database
+	if err := db.Exec("delete from \"user\"").Error; err != nil {
+		session.AddFlash(err.Error())
+	}
+
+	if err := db.Exec("delete from \"page\"").Error; err != nil {
+		session.AddFlash(err.Error())
+	}
+
+	session.Save()
+
+	c.Redirect(http.StatusSeeOther, "/tools")
+}
+
+func actionToolsSeedAdmin(c *gin.Context) {
+	session := sessions.Default(c)
+
+	result := db.Create(&User{Login: "admin", Password: "admin"})
+	if result.Error != nil {
+		session.AddFlash(result.Error)
+	}
+
+	session.Save()
+
+	c.Redirect(http.StatusSeeOther, "/tools")
 }
