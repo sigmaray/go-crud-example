@@ -396,7 +396,7 @@ func actionToolsDBClear(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, "/tools")
 }
 
-func actionToolsSeedAdmin(c *gin.Context) {
+func actionToolsSeed(c *gin.Context) {
 	session := sessions.Default(c)
 
 	result := db.Create(&User{Login: "admin", Password: "admin"})
@@ -404,7 +404,69 @@ func actionToolsSeedAdmin(c *gin.Context) {
 		session.AddFlash(result.Error)
 	}
 
+	result = db.Create(&Page{Slug: "about", Content: "This is the about page."})
+	if result.Error != nil {
+		session.AddFlash(result.Error)
+	}
+
 	session.Save()
 
 	c.Redirect(http.StatusSeeOther, "/tools")
+}
+
+// func actionToolsSQL(c *gin.Context) {
+// 	q := c.Param("q")
+// 	if err := db.Exec(q).Error; err != nil {
+// 		c.String(http.StatusOK, "Error executing SQL query: %s", err.Error())
+// 	}
+
+// 	c.String(http.StatusOK, "ok")
+// }
+
+// 4. GET /query?q=SELECT‌… → returns JSON array of rows
+func actionToolsSQL(c *gin.Context) {
+	// Get SQL query from URL parameter
+	q := c.Query("q")
+	if q == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'q' parameter"})
+		return
+	}
+
+	sqlDB, _ := db.DB()
+
+	rows, _ := sqlDB.Query(q) // Note: Ignoring errors for brevity
+	cols, _ := rows.Columns()
+
+	out := make([]map[string]interface{}, 0)
+
+	for rows.Next() {
+		// Create a slice of interface{}'s to represent each column,
+		// and a second slice to contain pointers to each item in the columns slice.
+		columns := make([]interface{}, len(cols))
+		columnPointers := make([]interface{}, len(cols))
+		for i, _ := range columns {
+			columnPointers[i] = &columns[i]
+		}
+
+		// Scan the result into the column pointers...
+		if err := rows.Scan(columnPointers...); err != nil {
+			// return err
+			c.JSON(http.StatusBadRequest, gin.H{"error": err})
+			return
+		}
+
+		// Create our map, and retrieve the value for each column from the pointers slice,
+		// storing it in the map with the name of the column as the key.
+		m := make(map[string]interface{})
+		for i, colName := range cols {
+			val := columnPointers[i].(*interface{})
+			m[colName] = *val
+		}
+
+		// Outputs: map[columnName:value columnName2:value2 columnName3:value3 ...]
+		// fmt.Print(m)
+		out = append(out, m)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"q": q, "out": out})
 }

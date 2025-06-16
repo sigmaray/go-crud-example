@@ -9,7 +9,7 @@
     </tr>
     {{range .pages}}
     <tr>
-        <td><a href="/admin/pages/{{.ID}}">{{.ID}}</a></td>
+        <td><a href="/admin/pages/{{.ID}}" data-selenium="show-{{.Slug}}">{{.ID}}</a></td>
         <td>{{.Slug}}</td>
         <td>
             <a class="button" href="/admin/pages/{{.ID}}/edit" data-selenium="edit-{{.Slug}}">Edit</a>

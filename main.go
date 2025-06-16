@@ -162,7 +162,8 @@ func setupGin() {
 	router.POST("/admin/pages/:id/delete", middlewareAuthRequired, middlewareSetUser, actionPagesDestroy)
 	router.GET("/tools", actionTools)
 	router.GET("/tools/db-clear", actionToolsDBClear)
-	router.GET("/tools/seed-admin", actionToolsSeedAdmin)
+	router.GET("/tools/seed", actionToolsSeed)
+	router.GET("/tools/sql", actionToolsSQL)
 
 	// Run the server
 	router.Run(":8080")
