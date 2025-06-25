@@ -165,6 +165,10 @@ func setupGin() {
 	router.GET("/tools/seed", actionToolsSeed)
 	router.GET("/tools/sql", actionToolsSQL)
 
+	// router.GET("/admin/collection_todos/new", middlewareAuthRequired, middlewareSetUser, actionCollectionTodosNew)
+	// router.POST("/admin/collection_todos/create", middlewareAuthRequired, middlewareSetUser, actionCollectionTodosCreate)
+	router.GET("/admin/collection_todos", middlewareAuthRequired, middlewareSetUser, actionCollectionTodosIndex)
+
 	// Run the server
 	router.Run(":8080")
 }

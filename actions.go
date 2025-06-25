@@ -470,3 +470,61 @@ func actionToolsSQL(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"q": q, "out": out})
 }
+
+// -----------------------------------------------------
+
+type CollectionTodo struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	Title     string    `json:"title" gorm:"not null"`
+	Completed bool      `json:"completed" gorm:"default:false"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// func actionCollectionTodosNew(c *gin.Context) {
+// 	var user CollectionTodo
+// 	c.HTML(http.StatusOK, "collection_todos_new.html", addFlashesAndUser(c, &gin.H{"user": user}))
+// }
+
+// func actionCollectionTodosCreate(c *gin.Context) {
+// 	var user CollectionTodo
+// 	user.Login = c.PostForm("login")
+// 	// TODO: Encrypt password
+// 	user.Password = c.PostForm("password")
+// 	user.CreatedAt = time.Now()
+// 	user.UpdatedAt = time.Now()
+
+// 	user_input := &UserInput{
+// 		Login:    user.Login,
+// 		Password: user.Password,
+// 	}
+
+// 	// Validate user input
+// 	validate := validator.New(validator.WithRequiredStructEnabled())
+// 	if err := validate.Struct(user_input); err != nil {
+// 		c.HTML(http.StatusBadRequest, "collection_todos_new.html", addFlashesAndUser(c, &gin.H{"errors": humanValidationErrors(err), "user": user}))
+// 		return
+// 	}
+
+// 	if err := db.Create(&user).Error; err != nil {
+// 		c.HTML(http.StatusInternalServerError, "collection_todos_new.html", addFlashesAndUser(c, &gin.H{"errors": []string{err.Error()}, "user": user}))
+// 		return
+// 	}
+
+// 	session := sessions.Default(c)
+// 	session.AddFlash("Todo was added.")
+// 	session.Save()
+
+// 	c.Redirect(http.StatusSeeOther, "/admin/collection_todos")
+// }
+
+func actionCollectionTodosIndex(c *gin.Context) {
+	var collection_todos []CollectionTodo
+	collection_todos = []CollectionTodo{
+		{ID: 1, Title: "Buy groceries", Completed: false, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		{ID: 2, Title: "Walk the dog", Completed: true, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		{ID: 3, Title: "Read a book", Completed: false, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+	}
+	// db.Find(&todos)
+	c.HTML(http.StatusOK, "collection_todos_index.html", addFlashesAndUser(c, &gin.H{"collection_todos": collection_todos}))
+}
