@@ -2,4 +2,5 @@
 main
 go-crud-example
 venv
+.venv
 __pycache__

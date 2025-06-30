@@ -1,0 +1,11 @@
+{{define "content"}}
+<h1>Create New Page</h1>
+<form action="/admin/pages/create" method="post">
+    <label for="slug">Slug:</label>
+    <input type="text" id="slug" name="slug" required value="{{.page.Slug}}"><br>
+    <label for="content">Content:</label>
+    <textarea type="content" id="content" name="content" required>{{.page.Content}}</textarea><br>
+    
+    <button type="submit">Create</button>
+</form>
+{{end}}

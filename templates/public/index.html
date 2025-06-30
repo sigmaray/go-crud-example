@@ -1,0 +1,16 @@
+{{define "content"}}
+<h1>Home</h1>
+<p>
+	You can find admin panel here: <a href="/admin">/admin</a>
+</p>
+<p>
+	List of pages:
+	<ul data-selenium="page-list">
+		{{range .pages}}
+			<li>
+				<a href="/pages/{{.Slug}}">{{.Slug}}</a>				
+			</li>
+		{{end}}
+	</ul>
+</p>
+{{end}}

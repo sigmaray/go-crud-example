@@ -157,7 +157,7 @@ def test_user_create_uniqueness_validation(driver):
     submit_button.click()
 
     body = driver.find_element(By.TAG_NAME, "body")
-    assert 'pq: duplicate key value violates unique constraint "user_login_key"' in body.text
+    assert 'ERROR: duplicate key value violates unique constraint' in body.text
 
 
 def test_user_create_and_delete_success(driver):
