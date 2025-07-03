@@ -1,6 +1,6 @@
 *.log
 main
-go-crud-example
+./go-crud-example
 venv
 .venv
 __pycache__
