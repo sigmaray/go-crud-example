@@ -49,10 +49,11 @@ jobs:
 
     - name: Cypress run
       uses: cypress-io/github-action@v6
+      env:
+        TEST: 1
       with:
         start: go run .
         # quote the url to be safe against YML parsing surprises
         wait-on: 'http://localhost:8080/'
         browser: chrome
         headless: true
-        spec: cypress/e2e/smoke.cy.js

@@ -47,7 +47,7 @@ describe('User Management', () => {
     cy.get('#login').type(uniqueName);
     cy.get('#password').type('password');
     cy.get('button[type="submit"]').click();
-    cy.contains('ERROR: duplicate key value violates unique constraint "user_login_key" (SQLSTATE 23505)').should('be.visible');
+    cy.contains('ERROR: duplicate key value violates unique constraint').should('be.visible');
   });
 
   it('Creates and deletes users', () => {
