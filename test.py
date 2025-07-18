@@ -5,7 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from urllib.parse import urlparse
 
-BASE_URL = 'http://localhost:8080'
+BASE_URL = 'http://127.0.0.1:8080'
 
 @pytest.fixture(scope="module")
 def driver():
