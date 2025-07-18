@@ -10,6 +10,7 @@
 - Encrypt passwords
 - Move db credentials into .env
 - Don't expose internal error messages (for example SQL errors) to user
+- Don't hardcode base URL in tests
 
 ## How to run app
 
