@@ -63,21 +63,21 @@ func initDB() {
 	db.AutoMigrate(&User{}, &Page{})
 }
 
-func seed() {
-	var count int64
+// func seed() {
+// 	var count int64
 
-	db.Model(&User{}).Count(&count)
+// 	db.Model(&User{}).Count(&count)
 
-	// If there are no users, create sample user
-	if count == 0 {
-		result := db.Create(&User{Login: "admin", Password: "admin"})
-		if result.Error != nil {
-			println(result.Error)
-			panic("Failed to create user")
-		}
+// 	// If there are no users, create sample user
+// 	if count == 0 {
+// 		result := db.Create(&User{Login: "admin", Password: "admin"})
+// 		if result.Error != nil {
+// 			println(result.Error)
+// 			panic("Failed to create user")
+// 		}
 
-	}
-}
+// 	}
+// }
 
 func isTest() bool {
 	return (os.Getenv("TEST") == "1" || os.Getenv("TEST") == "true" || os.Getenv("TEST") == "yes" || os.Getenv("TEST") == "on" || os.Getenv("TEST") == "t")
@@ -150,7 +150,7 @@ func loadTemplates(templatesDir string) multitemplate.Renderer {
 }
 
 func setupGin() {
-    // Create a new Gin router
+	// Create a new Gin router
 	router := gin.Default()
 
 	store := cookie.NewStore([]byte("secret"))
@@ -167,7 +167,7 @@ func setupGin() {
 func main() {
 	initDB()
 
-	seed()
+	// seed()
 
 	setupGin()
 }
