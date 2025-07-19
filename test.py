@@ -1,6 +1,7 @@
 import pytest
 import uuid
 import time
+import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from urllib.parse import urlparse
@@ -15,7 +16,6 @@ def driver():
     yield drv
     drv.quit()
 
-
 # Get the path from a URL
 def get_path(url):
     p = urlparse(url)
@@ -26,6 +26,22 @@ def click_workaround(driver, element):
     driver.execute_script("arguments[0].click();", element)
     # TODO: Get rid of sleep
     time.sleep(1)
+    
+def reset_database():
+    clear_response = requests.get(f"{BASE_URL}/tools/db-clear")
+    assert clear_response.status_code == 200
+    seed_response = requests.get(f"{BASE_URL}/tools/seed")
+    assert seed_response.status_code == 200
+
+@pytest.fixture(scope="session", autouse=True)
+def global_setup_and_teardown():
+    # Setup: runs before any tests
+    print("\n>>> Global setup before all tests\n")
+    reset_database()
+    yield
+    # Teardown: runs after all tests
+    print("\n>>> Global teardown after all tests\n")
+    reset_database()
 
 def test_login_page_failure(driver):
     driver.get(BASE_URL + "/login")
